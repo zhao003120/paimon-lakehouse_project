@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paimon Lakehouse 数仓报表</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card-bg: #1a1d28;
+            --card-border: #2a2d3a;
+            --text: #e4e6eb;
+            --text-dim: #8b8fa3;
+            --accent: #4f8cff;
+            --accent-green: #00d68f;
+            --accent-orange: #ff9f40;
+            --accent-red: #ff5757;
+            --accent-purple: #a855f7;
+            --accent-cyan: #22d3ee;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+        .header .meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .header .meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .header .meta .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--accent);
+        }
+        .kpi-card.green::before { background: var(--accent-green); }
+        .kpi-card.orange::before { background: var(--accent-orange); }
+        .kpi-card.purple::before { background: var(--accent-purple); }
+        .kpi-card.cyan::before { background: var(--accent-cyan); }
+        .kpi-card.red::before { background: var(--accent-red); }
+        .kpi-card .label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+        .kpi-card .value {
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .kpi-card .sub {
+            font-size: 12px;
+            margin-top: 6px;
+            color: var(--text-dim);
+        }
+        .kpi-card .sub .up { color: var(--accent-green); }
+        .kpi-card .sub .down { color: var(--accent-red); }
+        .section {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title .tag {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(79, 140, 255, 0.15);
+            color: var(--accent);
+            font-weight: 500;
+        }
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .charts-row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        table th {
+            text-align: left;
+            padding: 10px 12px;
+            color: var(--text-dim);
+            font-weight: 500;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        table tr:last-child td { border-bottom: none; }
+        table tr:hover td { background: rgba(79, 140, 255, 0.05); }
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge.vip { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); }
+        .badge.normal { background: rgba(0, 214, 143, 0.15); color: var(--accent-green); }
+        .badge.new { background: rgba(34, 211, 238, 0.15); color: var(--accent-cyan); }
+        .badge.app { background: rgba(79, 140, 255, 0.15); color: var(--accent); }
+        .badge.web { background: rgba(255, 159, 64, 0.15); color: var(--accent-orange); }
+        .badge.mini { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); }
+        .badge.success { background: rgba(0, 214, 143, 0.15); color: var(--accent-green); }
+        .badge.danger { background: rgba(255, 87, 87, 0.15); color: var(--accent-red); }
+        .reconcile-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .reconcile-row:last-child { border-bottom: none; }
+        .reconcile-row .layer {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .reconcile-row .layer-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        .reconcile-row .amount {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .reconcile-ok {
+            text-align: center;
+            padding: 16px;
+            color: var(--accent-green);
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .footer {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 12px;
+            padding: 16px 0 8px;
+        }
+        @media (max-width: 1200px) {
+            .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+            .charts-row, .charts-row-3 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Paimon Lakehouse 数仓报表</h1>
+    <div class="meta">
+        <span><span class="dot"></span> MinIO S3</span>
+        <span>Flink 1.18 + Paimon 0.8</span>
+        <span id="updateTime">2026-09-02 14:00</span>
+    </div>
+</div>
+
+<!-- ==================== 报表 1: KPI 大盘 ==================== -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="label">订单总数</div>
+        <div class="value" id="kpiOrders">0</div>
+        <div class="sub"><span class="up">+12.5%</span> vs 昨日</div>
+    </div>
+    <div class="kpi-card green">
+        <div class="label">总金额</div>
+        <div class="value" id="kpiAmount">0</div>
+        <div class="sub"><span class="up">+8.3%</span> vs 昨日</div>
+    </div>
+    <div class="kpi-card orange">
+        <div class="label">客单价</div>
+        <div class="value" id="kpiAvg">0</div>
+        <div class="sub"><span class="down">-2.1%</span> vs 昨日</div>
+    </div>
+    <div class="kpi-card purple">
+        <div class="label">VIP 订单</div>
+        <div class="value" id="kpiVip">0</div>
+        <div class="sub"><span class="up">VIP 占比 <span id="kpiVipRatio">0%</span></span></div>
+    </div>
+    <div class="kpi-card cyan">
+        <div class="label">退款数</div>
+        <div class="value" id="kpiRefund">0</div>
+        <div class="sub">退款率 <span id="kpiRefundRate">0%</span></div>
+    </div>
+    <div class="kpi-card red">
+        <div class="label">脏数据拦截</div>
+        <div class="value" id="kpiDirty">0</div>
+        <div class="sub">坑三: 数据校验</div>
+    </div>
+</div>
+
+<!-- ==================== 报表 4: 日趋势 ==================== -->
+<div class="section">
+    <div class="section-title">
+        日趋势 <span class="tag">DWS 层 dws_order_daily</span>
+    </div>
+    <div class="chart-container" style="height: 260px;">
+        <canvas id="trendChart"></canvas>
+    </div>
+</div>
+
+<!-- ==================== 报表 2 + 3: 客户排行 + 渠道分析 ==================== -->
+<div class="charts-row">
+    <div class="section">
+        <div class="section-title">
+            客户等级排行 <span class="tag">ADS 层 ads_customer_rank</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="customerChart"></canvas>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-title">
+            渠道分析 <span class="tag">ADS 层 ads_channel_stat</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="channelChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 报表 2+3 明细表 ==================== -->
+<div class="charts-row">
+    <div class="section">
+        <div class="section-title">客户等级明细</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>客户等级</th>
+                    <th>订单数</th>
+                    <th>总金额</th>
+                    <th>客单价</th>
+                    <th>排名</th>
+                </tr>
+            </thead>
+            <tbody id="customerTable"></tbody>
+        </table>
+    </div>
+    <div class="section">
+        <div class="section-title">渠道分析明细</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>渠道</th>
+                    <th>订单数</th>
+                    <th>总金额</th>
+                    <th>客单价</th>
+                    <th>退款率</th>
+                </tr>
+            </thead>
+            <tbody id="channelTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== 报表 5: 脏数据追溯 ==================== -->
+<div class="section">
+    <div class="section-title">
+        脏数据追溯 <span class="tag">ODS 层 dirty_orders (坑三)</span>
+    </div>
+    <div class="charts-row" style="margin-bottom: 0;">
+        <div class="chart-container">
+            <canvas id="dirtyChart"></canvas>
+        </div>
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>拦截原因</th>
+                        <th>脏数据数</th>
+                        <th>最小金额</th>
+                        <th>最大金额</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody id="dirtyTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 报表 6: 全链路对账 ==================== -->
+<div class="section">
+    <div class="section-title">
+        全链路数据一致性校验 <span class="tag">ODS → DWD → DWS → ADS</span>
+    </div>
+    <div id="reconcileList"></div>
+    <div class="reconcile-ok" id="reconcileStatus"></div>
+</div>
+
+<!-- ==================== 架构总览 ==================== -->
+<div class="section">
+    <div class="section-title">数仓架构</div>
+    <table>
+        <thead>
+            <tr>
+                <th>层级</th>
+                <th>数据库</th>
+                <th>表</th>
+                <th>职责</th>
+                <th>存储</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge app">ODS</span></td>
+                <td>paimon_db</td>
+                <td>orders / dirty_orders</td>
+                <td>原始数据 + 校验过滤 + 脏数据追溯</td>
+                <td>Paimon @ MinIO</td>
+            </tr>
+            <tr>
+                <td><span class="badge normal">DWD</span></td>
+                <td>dwd</td>
+                <td>dwd_order_detail</td>
+                <td>明细宽表: JSON解析 + 维度补全</td>
+                <td>Paimon @ MinIO</td>
+            </tr>
+            <tr>
+                <td><span class="badge vip">DWS</span></td>
+                <td>dws</td>
+                <td>dws_order_daily / weekly</td>
+                <td>日/周汇总: 订单数/金额/退款率</td>
+                <td>Paimon @ MinIO</td>
+            </tr>
+            <tr>
+                <td><span class="badge mini">ADS</span></td>
+                <td>ads</td>
+                <td>ads_order_kpi / customer_rank / channel_stat</td>
+                <td>应用层: KPI大盘 + 排行 + 渠道</td>
+                <td>Paimon @ MinIO</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="footer">
+    Paimon Lakehouse Project | Flink 1.18 + Paimon 0.8 + MinIO S3 | 三个坑修复: FULL-COMPACTION + 预留字段 + 数据校验
+</div>
+
+<!-- data.js 由 DashboardGenerator.java 从 Paimon ADS 层查询生成 -->
+<!-- 如果 data.js 不存在，回退到模拟数据 -->
+<script src="data.js"></script>
+<script>
+// ================================================================
+// 数据源：优先使用 data.js (Paimon 真实数据)，否则回退到模拟数据
+// ================================================================
+
+const fallbackData = {
+    kpi: {
+        totalOrders: 11,
+        totalAmount: 4100.50,
+        avgAmount: 372.77,
+        vipCount: 3,
+        vipRatio: 0.2727,
+        refundCount: 0,
+        refundRate: 0.0000,
+        dirtyCount: 4
+    },
+    trend: {
+        dates: ['2026-09-01', '2026-09-02'],
+        orders: [5, 6],
+        amounts: [1200.50, 2900.00],
+        avgs: [240.10, 483.33]
+    },
+    customerRank: [
+        { dt: '2026-09-01', level: 'NORMAL', count: 3, total: 450.50, avg: 150.17, rank: 1 },
+        { dt: '2026-09-01', level: 'VIP', count: 1, total: 500.00, avg: 500.00, rank: 2 },
+        { dt: '2026-09-01', level: 'NEW', count: 1, total: 250.00, avg: 250.00, rank: 3 },
+        { dt: '2026-09-02', level: 'VIP', count: 2, total: 1900.00, avg: 950.00, rank: 1 },
+        { dt: '2026-09-02', level: 'NORMAL', count: 2, total: 750.00, avg: 375.00, rank: 2 },
+        { dt: '2026-09-02', level: 'NEW', count: 2, total: 250.00, avg: 125.00, rank: 3 }
+    ],
+    channelStat: [
+        { dt: '2026-09-01', channel: 'APP', count: 2, total: 700.00, avg: 350.00, refundRate: 0 },
+        { dt: '2026-09-01', channel: 'WEB', count: 2, total: 350.50, avg: 175.25, refundRate: 0 },
+        { dt: '2026-09-01', channel: 'MINI_APP', count: 1, total: 150.00, avg: 150.00, refundRate: 0 },
+        { dt: '2026-09-02', channel: 'APP', count: 3, total: 1800.00, avg: 600.00, refundRate: 0 },
+        { dt: '2026-09-02', channel: 'WEB', count: 2, total: 850.00, avg: 425.00, refundRate: 0 },
+        { dt: '2026-09-02', channel: 'MINI_APP', count: 1, total: 250.00, avg: 250.00, refundRate: 0 }
+    ],
+    dirty: {
+        totalCount: 4,
+        items: [
+            { reason: 'NEGATIVE_AMOUNT', count: 2, min: '-3268000.00', max: '-500.00' },
+            { reason: 'ABNORMAL_AMOUNT', count: 1, min: '99999999.00', max: '99999999.00' },
+            { reason: 'NULL_AMOUNT', count: 1, min: 'null', max: 'null' }
+        ]
+    },
+    reconcile: [
+        { layer: 'ODS', table: 'paimon_db.orders', amount: 4100.50, color: '#4f8cff' },
+        { layer: 'DWD', table: 'dwd.dwd_order_detail', amount: 4100.50, color: '#00d68f' },
+        { layer: 'DWS', table: 'dws.dws_order_daily', amount: 4100.50, color: '#a855f7' },
+        { layer: 'ADS', table: 'ads.ads_order_kpi', amount: 4100.50, color: '#22d3ee' }
+    ]
+};
+
+// 使用真实数据（data.js）或回退到模拟数据
+const data = (typeof window.paimonData !== 'undefined') ? window.paimonData : fallbackData;
+const isRealData = (typeof window.paimonData !== 'undefined');
+
+// 补全 dirty 字段兼容性（data.js 用 {totalCount, items}，fallback 也统一）
+if (data.dirty && Array.isArray(data.dirty)) {
+    data.dirty = { totalCount: data.dirty.reduce((s, d) => s + d.count, 0), items: data.dirty };
+}
+if (!data.kpi.dirtyCount && data.dirty) {
+    data.kpi.dirtyCount = data.dirty.totalCount || 0;
+}
+
+// ================================================================
+// 格式化
+// ================================================================
+function fmtMoney(v) {
+    return v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtPct(v) {
+    return (v * 100).toFixed(2) + '%';
+}
+
+// ================================================================
+// KPI 卡片
+// ================================================================
+document.getElementById('kpiOrders').textContent = data.kpi.totalOrders;
+document.getElementById('kpiAmount').textContent = '\u00a5' + fmtMoney(data.kpi.totalAmount);
+document.getElementById('kpiAvg').textContent = '\u00a5' + fmtMoney(data.kpi.avgAmount);
+document.getElementById('kpiVip').textContent = data.kpi.vipCount;
+document.getElementById('kpiVipRatio').textContent = fmtPct(data.kpi.vipRatio);
+document.getElementById('kpiRefund').textContent = data.kpi.refundCount;
+document.getElementById('kpiRefundRate').textContent = fmtPct(data.kpi.refundRate);
+document.getElementById('kpiDirty').textContent = data.kpi.dirtyCount;
+
+// 数据来源标记
+document.getElementById('updateTime').textContent = isRealData
+    ? new Date().toLocaleString('zh-CN') + ' (Paimon 实时数据)'
+    : '2026-09-02 14:00 (模拟数据)';
+
+// ================================================================
+// 日趋势图
+// ================================================================
+new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+        labels: mockData.trend.dates,
+        datasets: [
+            {
+                label: '订单数',
+                data: mockData.trend.orders,
+                borderColor: '#4f8cff',
+                backgroundColor: 'rgba(79,140,255,0.1)',
+                yAxisID: 'y',
+                tension: 0.3,
+                fill: true
+            },
+            {
+                label: '总金额',
+                data: data.trend.amounts,
+                borderColor: '#00d68f',
+                backgroundColor: 'rgba(0,214,143,0.1)',
+                yAxisID: 'y1',
+                tension: 0.3,
+                fill: true
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { labels: { color: '#8b8fa3', font: { size: 12 } } }
+        },
+        scales: {
+            x: { ticks: { color: '#8b8fa3' }, grid: { color: '#2a2d3a' } },
+            y: { type: 'linear', position: 'left', ticks: { color: '#4f8cff' }, grid: { color: '#2a2d3a' } },
+            y1: { type: 'linear', position: 'right', ticks: { color: '#00d68f' }, grid: { drawOnChartArea: false } }
+        }
+    }
+});
+
+// ================================================================
+// 客户等级排行图
+// ================================================================
+const customerLevels = ['VIP', 'NORMAL', 'NEW'];
+const customerByLevel = customerLevels.map(lvl => {
+    const items = data.customerRank.filter(r => r.level === lvl);
+    return {
+        count: items.reduce((s, r) => s + r.count, 0),
+        total: items.reduce((s, r) => s + r.total, 0)
+    };
+});
+new Chart(document.getElementById('customerChart'), {
+    type: 'bar',
+    data: {
+        labels: customerLevels,
+        datasets: [
+            { label: '订单数', data: customerByLevel.map(c => c.count), backgroundColor: ['#a855f7','#00d68f','#22d3ee'], borderRadius: 6 },
+            { label: '总金额', data: customerByLevel.map(c => c.total), backgroundColor: 'rgba(79,140,255,0.4)', borderRadius: 6, yAxisID: 'y1' }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#8b8fa3' } } },
+        scales: {
+            x: { ticks: { color: '#8b8fa3' }, grid: { color: '#2a2d3a' } },
+            y: { ticks: { color: '#8b8fa3' }, grid: { color: '#2a2d3a' } },
+            y1: { position: 'right', ticks: { color: '#4f8cff' }, grid: { drawOnChartArea: false } }
+        }
+    }
+});
+
+// ================================================================
+// 渠道分析图
+// ================================================================
+const channels = ['APP', 'WEB', 'MINI_APP'];
+const channelData = channels.map(ch => {
+    const items = data.channelStat.filter(r => r.channel === ch);
+    return {
+        count: items.reduce((s, r) => s + r.count, 0),
+        total: items.reduce((s, r) => s + r.total, 0)
+    };
+});
+new Chart(document.getElementById('channelChart'), {
+    type: 'doughnut',
+    data: {
+        labels: channels,
+        datasets: [{
+            data: channelData.map(c => c.total),
+            backgroundColor: ['#4f8cff', '#ff9f40', '#a855f7'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'right', labels: { color: '#8b8fa3', padding: 16 } }
+        }
+    }
+});
+
+// ================================================================
+// 脏数据追溯图
+// ================================================================
+new Chart(document.getElementById('dirtyChart'), {
+    type: 'bar',
+    data: {
+        labels: data.dirty.items.map(d => d.reason),
+        datasets: [{
+            label: '脏数据数',
+            data: data.dirty.items.map(d => d.count),
+            backgroundColor: ['#ff5757', '#ff9f40', '#8b8fa3'],
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { color: '#8b8fa3' }, grid: { color: '#2a2d3a' } },
+            y: { ticks: { color: '#8b8fa3' }, grid: { color: '#2a2d3a' } }
+        }
+    }
+});
+
+// ================================================================
+// 客户等级明细表
+// ================================================================
+const customerTbody = document.getElementById('customerTable');
+data.customerRank.forEach(r => {
+    const cls = r.level === 'VIP' ? 'vip' : r.level === 'NORMAL' ? 'normal' : 'new';
+    customerTbody.innerHTML += `<tr>
+        <td>${r.dt}</td>
+        <td><span class="badge ${cls}">${r.level}</span></td>
+        <td>${r.count}</td>
+        <td>\u00a5${fmtMoney(r.total)}</td>
+        <td>\u00a5${fmtMoney(r.avg)}</td>
+        <td>${r.rank}</td>
+    </tr>`;
+});
+
+// ================================================================
+// 渠道分析明细表
+// ================================================================
+const channelTbody = document.getElementById('channelTable');
+data.channelStat.forEach(r => {
+    const cls = r.channel === 'APP' ? 'app' : r.channel === 'WEB' ? 'web' : 'mini';
+    channelTbody.innerHTML += `<tr>
+        <td>${r.dt}</td>
+        <td><span class="badge ${cls}">${r.channel}</span></td>
+        <td>${r.count}</td>
+        <td>\u00a5${fmtMoney(r.total)}</td>
+        <td>\u00a5${fmtMoney(r.avg)}</td>
+        <td>${fmtPct(r.refundRate)}</td>
+    </tr>`;
+});
+
+// ================================================================
+// 脏数据明细表
+// ================================================================
+const dirtyTbody = document.getElementById('dirtyTable');
+data.dirty.items.forEach(d => {
+    dirtyTbody.innerHTML += `<tr>
+        <td><span class="badge danger">${d.reason}</span></td>
+        <td>${d.count}</td>
+        <td>${d.min}</td>
+        <td>${d.max}</td>
+        <td><span class="badge danger">已拦截</span></td>
+    </tr>`;
+});
+
+// ================================================================
+// 全链路对账
+// ================================================================
+const reconcileList = document.getElementById('reconcileList');
+data.reconcile.forEach(r => {
+    reconcileList.innerHTML += `<div class="reconcile-row">
+        <div class="layer">
+            <div class="layer-icon" style="background: ${r.color}22; color: ${r.color};">${r.layer}</div>
+            <div>
+                <div style="font-weight:600;">${r.table}</div>
+                <div style="font-size:12px;color:var(--text-dim);">${r.layer} 层</div>
+            </div>
+        </div>
+        <div class="amount" style="color: ${r.color};">\u00a5${fmtMoney(r.amount)}</div>
+    </div>`;
+});
+
+// 对账结果
+const allMatch = data.reconcile.every(r => r.amount === data.reconcile[0].amount);
+document.getElementById('reconcileStatus').innerHTML = allMatch
+    ? '\u2705 四层金额一致 (ODS = DWD = DWS = ADS = \u00a5' + fmtMoney(data.reconcile[0].amount) + ')，数仓链路正确'
+    : '\u26a0\ufe0f 四层金额不一致，请检查 ETL 逻辑';
+</script>
+
+</body>
+</html>

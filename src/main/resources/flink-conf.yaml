@@ -1,0 +1,44 @@
+#==============================================================================
+# Flink + Paimon 配置文件
+#==============================================================================
+
+#-------------------------------------- Checkpoint（坑一修复） ---------
+# 原文："30秒一提交，一天 2880 次，等于逼着系统一直小批量写。"
+# 修复：改为 3 分钟
+
+execution.checkpointing.interval: 3 min
+execution.checkpointing.min-pause: 30 s
+execution.checkpointing.timeout: 10 min
+execution.checkpointing.max-concurrent-checkpoints: 1
+execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+
+# Checkpoint 存储（MinIO S3 兼容存储）
+execution.checkpointing.storage: s3a://paimon/checkpoints
+
+#-------------------------------------- 重启策略 ---------------------
+restart-strategy: fixed-delay
+restart-strategy.fixed-delay.attempts: 3
+restart-strategy.fixed-delay.delay: 30 s
+
+#-------------------------------------- 并行度 -----------------------
+parallelism.default: 4
+
+#-------------------------------------- Web UI -----------------------
+rest.address: 0.0.0.0
+rest.port: 8081
+
+#-------------------------------------- TaskManager ------------------
+taskmanager.numberOfTaskSlots: 4
+taskmanager.memory.process.size: 2048m
+
+#-------------------------------------- Paimon 相关 ------------------
+# schema.evolution.enabled: true
+# ↑ 建议在表级 OPTIONS 中设置，而不是全局
+
+#-------------------------------------- MinIO S3 配置 ----------------
+# Docker: S3_ENDPOINT=http://minio:9000  Local: http://localhost:9000
+s3.access-key: admin
+s3.secret-key: admin123
+s3.endpoint: http://minio:9000
+s3.path-style-access: true
+# ↑ MinIO must use path-style-access (no virtual-host mode)
