@@ -1,0 +1,17 @@
+# ================================================================
+# sql-defaults.yaml: Flink SQL Client defaults
+# ================================================================
+# Used by run-sql.sh when executing SQL files
+
+execution:
+  planner: streaming
+  result-mode: tableau
+  parallelism: 4
+
+configuration:
+  table.exec.source.idle-timeout: 30s
+  table.exec.mini-batch.enabled: true
+  table.exec.mini-batch.allow-latency: 5s
+  table.exec.mini-batch.size: 100
+
+# Paimon catalog will be created in 00-catalog.sql
