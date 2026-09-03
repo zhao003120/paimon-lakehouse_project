@@ -11,10 +11,16 @@ taskmanager.numberOfTaskSlots: 4
 # Parallelism
 parallelism.default: 2
 
-# Disable adaptive parallelism (Paimon Sink does not support it)
-execution.batch-mode.adaptive-parallelism.enabled: false
+# BATCH mode (global default - ensures all jobs run in batch, not streaming)
+# This is the most reliable way to set batch mode in Flink 1.18
+execution.runtime-mode: BATCH
+execution.batch-shuffle-mode: ALL_EXCHANGES_BLOCKING
+table.exec.source.idle-timeout: 30s
 
-# Checkpointing (坑一修复: 3 min interval, not 30s)
+# Disable adaptive parallelism (Paimon Sink does not support it)
+table.exec.adaptive-parallelism.enabled: false
+
+# Checkpointing (disabled for batch mode - not needed for finite INSERT OVERWRITE)
 execution.checkpointing.interval: 3min
 execution.checkpointing.timeout: 10min
 execution.checkpointing.min-pause: 1min

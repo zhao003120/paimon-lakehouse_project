@@ -56,13 +56,19 @@ $(cat "$f")
     done
     
     echo -e "\033[0;36m=== Flink SQL:$names ===\033[0m"
-    
-    # Run all SQL in a single session via stdin
-    # No head/tail truncation - let all statements complete
-    echo "$combined" | $SQL_CLIENT embedded \
+
+    # Write combined SQL to temp file, then pipe to sql-client via stdin
+    # Pipe mode (not -f flag) ensures SET statements persist across all statements
+    local tmp_file="/tmp/flink-combined.sql"
+    echo "$combined" > "$tmp_file"
+
+    # Execute via stdin pipe (SET statements work in this mode)
+    cat "$tmp_file" | $SQL_CLIENT embedded \
         -l "$FLINK_HOME/lib" \
         -e "$SQL_DIR/sql-defaults.yaml" \
         2>&1
+
+    rm -f "$tmp_file"
     
     echo -e "\033[0;32m  Done:$names\033[0m"
 }

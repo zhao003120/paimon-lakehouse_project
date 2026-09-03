@@ -5,7 +5,7 @@
 # Instead, run-sql.sh auto-injects 00-catalog.sql into every session
 
 execution:
-  planner: batch
+  type: batch
   result-mode: tableau
   parallelism: 4
 
