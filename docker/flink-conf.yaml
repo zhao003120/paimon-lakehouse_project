@@ -1,0 +1,33 @@
+# Flink configuration for Docker deployment
+# JobManager RPC address - TaskManager uses this to connect to JobManager
+jobmanager.rpc.address: jobmanager
+jobmanager.rpc.port: 6123
+jobmanager.memory.process.size: 1600m
+
+# TaskManager
+taskmanager.memory.process.size: 2048m
+taskmanager.numberOfTaskSlots: 4
+
+# Parallelism
+parallelism.default: 2
+
+# Checkpointing (坑一修复: 3 min interval, not 30s)
+execution.checkpointing.interval: 3min
+execution.checkpointing.timeout: 10min
+execution.checkpointing.min-pause: 1min
+execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+
+# State backend
+state.backend: rocksdb
+state.checkpoints.dir: s3://paimon/checkpoints
+
+# S3 configuration (for MinIO)
+s3.access-key: admin
+s3.secret-key: admin123
+s3.endpoint: http://minio:9000
+s3.path-style-access: true
+
+# Restart strategy
+restart-strategy: fixed-delay
+restart-strategy.fixed-delay.attempts: 3
+restart-strategy.fixed-delay.delay: 10s
