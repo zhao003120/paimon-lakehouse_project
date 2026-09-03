@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS paimon_db.orders (
     ext_field3      STRING,
     ext_field4      STRING,
     ext_field5      STRING,
-    PRIMARY KEY (order_id) NOT ENFORCED
+    PRIMARY KEY (order_id, dt) NOT ENFORCED
 ) WITH (
     'connector' = 'paimon',
     'bucket' = '8',
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS paimon_db.dirty_orders (
     dt              STRING,
     reject_reason   STRING,
     raw_data        STRING,
-    PRIMARY KEY (order_id) NOT ENFORCED
+    PRIMARY KEY (order_id, dt) NOT ENFORCED
 ) WITH (
     'connector' = 'paimon',
     'bucket' = '4',

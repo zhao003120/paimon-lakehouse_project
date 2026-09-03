@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS dwd.dwd_order_detail (
     channel         STRING,
     order_type      STRING,
     is_valid        BOOLEAN,
-    PRIMARY KEY (order_id) NOT ENFORCED
+    PRIMARY KEY (order_id, dt) NOT ENFORCED
 ) WITH (
     'connector' = 'paimon',
     'bucket' = '8',
