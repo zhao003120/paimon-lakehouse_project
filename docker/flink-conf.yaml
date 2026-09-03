@@ -11,6 +11,9 @@ taskmanager.numberOfTaskSlots: 4
 # Parallelism
 parallelism.default: 2
 
+# Disable adaptive parallelism (Paimon Sink does not support it)
+execution.batch-mode.adaptive-parallelism.enabled: false
+
 # Checkpointing (坑一修复: 3 min interval, not 30s)
 execution.checkpointing.interval: 3min
 execution.checkpointing.timeout: 10min
