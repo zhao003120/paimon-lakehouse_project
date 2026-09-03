@@ -8,8 +8,8 @@ services:
     image: minio/minio:latest
     container_name: paimon-minio
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web Console
+      - "9000:9000"
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: admin123
@@ -22,7 +22,6 @@ services:
       timeout: 3s
       retries: 10
 
-  # Auto-create the "paimon" bucket after MinIO starts
   minio-init:
     image: minio/mc:latest
     container_name: paimon-minio-init
@@ -38,7 +37,7 @@ services:
     restart: "no"
 
   # ================================================================
-  # Flink Job Runner: build & run paimon-lakehouse_project
+  # Flink: ETL pipeline (write to Paimon)
   # ================================================================
   jobmanager:
     build:
@@ -49,7 +48,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     ports:
-      - "8081:8081"   # Flink Web UI
+      - "8081:8081"
     environment:
       - FLINK_HOME=/opt/flink
       - S3_ENDPOINT=http://minio:9000
@@ -57,7 +56,6 @@ services:
       - S3_SECRET_KEY=admin123
     volumes:
       - ../:/app
-      - maven-repo:/root/.m2
     command: jobmanager
     stdin_open: true
     tty: true
@@ -76,11 +74,62 @@ services:
       - S3_SECRET_KEY=admin123
     volumes:
       - ../:/app
-      - maven-repo:/root/.m2
     command: taskmanager
     stdin_open: true
     tty: true
 
+  # ================================================================
+  # StarRocks FE (Frontend): metadata + query planning + CBO
+  # ================================================================
+  starrocks-fe:
+    image: starrocks/fe-ubuntu:3.3.2
+    container_name: paimon-starrocks-fe
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "8030:8030"   # FE HTTP (Web UI)
+      - "9020:9020"   # FE thrift (BE connects here)
+      - "9030:9030"   # FE MySQL (SQL client connects here)
+    environment:
+      - MYSQL_PORT=9030
+    volumes:
+      - starrocks-fe-meta:/opt/starrocks/fe/meta
+      - ../sql/starrocks:/app/sql/starrocks
+    command: >
+      bash /opt/starrocks/fe/bin/start_fe.sh --host_type FQDN
+    healthcheck:
+      test: ["CMD", "bash", "-c", "curl -sf http://localhost:8030/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ================================================================
+  # StarRocks BE (Backend): MPP execution + Data Cache + vectorized engine
+  # ================================================================
+  starrocks-be:
+    image: starrocks/be-ubuntu:3.3.2
+    container_name: paimon-starrocks-be
+    depends_on:
+      starrocks-fe:
+        condition: service_healthy
+    ports:
+      - "8040:8040"   # BE HTTP
+      - "9050:9050"   # BE thrift
+      - "9060:9060"   # BE webserver
+    environment:
+      - FE_HOST=starrocks-fe
+      - FE_PORT=9020
+      - BE_PORT=9050
+    volumes:
+      - starrocks-be-storage:/opt/starrocks/be/storage
+    command: >
+      bash -c "
+      sleep 10 &&
+      /opt/starrocks/be/bin/start_be.sh --host_type FQDN
+      "
+
 volumes:
   minio-data:
-  maven-repo:
+  starrocks-fe-meta:
+  starrocks-be-storage:
