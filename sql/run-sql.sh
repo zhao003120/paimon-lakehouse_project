@@ -60,6 +60,7 @@ $(cat "$f")
     # Run all SQL in a single session via stdin
     echo "$combined" | $SQL_CLIENT embedded \
         -l "$FLINK_HOME/lib" \
+        -e "$SQL_DIR/sql-defaults.yaml" \
         2>&1 | head -200
     
     echo -e "\033[0;32m  Done:$names\033[0m"

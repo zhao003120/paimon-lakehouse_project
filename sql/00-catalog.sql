@@ -1,6 +1,14 @@
 -- ================================================================
 -- 00-catalog.sql: Create Paimon Catalog with MinIO S3
 -- ================================================================
+-- This file is auto-injected by run-sql.sh at the start of every session
+-- ================================================================
+
+-- Batch mode (required for INSERT OVERWRITE and finite query results)
+SET 'execution.runtime-mode' = 'batch';
+
+-- Disable adaptive parallelism (Paimon Sink does not support it)
+SET 'table.exec.adaptive-parallelism.enabled' = 'false';
 
 CREATE CATALOG paimon WITH (
     'type' = 'paimon',
