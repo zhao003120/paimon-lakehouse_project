@@ -20,24 +20,37 @@ FLINK_HOME="/opt/flink"
 SQL_CLIENT="$FLINK_HOME/bin/sql-client.sh"
 
 # ================================================================
-# Flink SQL runner
+# Flink SQL runner: concatenate all files into one session
 # ================================================================
 run_flink_sql() {
-    local file=$1
-    local name=$(basename "$file" .sql)
-    echo -e "\033[0;36m=== Flink: $name ===\033[0m"
-    $SQL_CLIENT embedded \
-        -l "$FLINK_HOME/lib" \
-        -f "$file" \
-        -e "$SQL_DIR/sql-defaults.yaml" \
-        2>&1 | head -100
-    echo -e "\033[0;32m  Done: $name\033[0m"
-}
-
-run_flink_files() {
-    for file in "$@"; do
-        run_flink_sql "$SQL_DIR/$file"
+    local files=("$@")
+    local combined=""
+    local names=""
+    
+    for file in "${files[@]}"; do
+        local f="$SQL_DIR/$file"
+        if [ -f "$f" ]; then
+            names="$names $(basename "$file" .sql)"
+            combined="$combined
+-- ================================================================
+-- File: $file
+-- ================================================================
+$(cat "$f")
+"
+        else
+            echo "WARN: File not found: $f"
+        fi
     done
+    
+    echo -e "\033[0;36m=== Flink SQL:$names ===\033[0m"
+    
+    # Run all SQL in a single session via stdin
+    echo "$combined" | $SQL_CLIENT embedded \
+        -l "$FLINK_HOME/lib" \
+        -e "$SQL_DIR/sql-defaults.yaml" \
+        2>&1 | head -200
+    
+    echo -e "\033[0;32m  Done:$names\033[0m"
 }
 
 # ================================================================
@@ -56,27 +69,27 @@ case $ACTION in
     # --- Flink pipeline ---
     ddl)
         echo -e "\033[0;36m=== Create All Tables ===\033[0m"
-        run_flink_files 00-catalog.sql 01-ods-ddl.sql 03-dwd-ddl.sql 05-dws-ddl.sql 07-ads-ddl.sql
+        run_flink_sql 00-catalog.sql 01-ods-ddl.sql 03-dwd-ddl.sql 05-dws-ddl.sql 07-ads-ddl.sql
         ;;
     mock)
         echo -e "\033[0;36m=== Insert Mock Data ===\033[0m"
-        run_flink_files 00-catalog.sql 02-mock-data.sql
+        run_flink_sql 00-catalog.sql 02-mock-data.sql
         ;;
     etl)
         echo -e "\033[0;36m=== Run ETL Pipeline ===\033[0m"
-        run_flink_files 00-catalog.sql 04-ods-to-dwd.sql 06-dwd-to-dws.sql 08-dws-to-ads.sql
+        run_flink_sql 00-catalog.sql 04-ods-to-dwd.sql 06-dwd-to-dws.sql 08-dws-to-ads.sql
         ;;
     report)
         echo -e "\033[0;36m=== Query Reports (Flink) ===\033[0m"
-        run_flink_files 00-catalog.sql 09-report.sql
+        run_flink_sql 00-catalog.sql 09-report.sql
         ;;
     schema-demo)
         echo -e "\033[0;36m=== Schema Evolution Demo ===\033[0m"
-        run_flink_files 00-catalog.sql 10-schema-evolution.sql
+        run_flink_sql 00-catalog.sql 10-schema-evolution.sql
         ;;
     checkpoint-demo)
         echo -e "\033[0;36m=== Checkpoint Recovery Demo ===\033[0m"
-        run_flink_files 00-catalog.sql 11-checkpoint-demo.sql
+        run_flink_sql 00-catalog.sql 11-checkpoint-demo.sql
         ;;
     warehouse)
         echo -e "\033[0;36m"
@@ -85,7 +98,7 @@ case $ACTION in
         echo "  ODS -> DWD -> DWS -> ADS -> Report"
         echo "========================================================"
         echo -e "\033[0m"
-        run_flink_files \
+        run_flink_sql \
             00-catalog.sql \
             01-ods-ddl.sql \
             02-mock-data.sql \
@@ -130,7 +143,7 @@ case $ACTION in
         echo "========================================================"
         echo -e "\033[0m"
         # Step 1: Flink pipeline (DDL + mock + ETL)
-        run_flink_files \
+        run_flink_sql \
             00-catalog.sql \
             01-ods-ddl.sql \
             02-mock-data.sql \
