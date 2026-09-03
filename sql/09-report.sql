@@ -1,20 +1,14 @@
 -- ================================================================
 -- 09-report.sql: Report queries (BI dashboard)
 -- ================================================================
--- Must use batch mode for finite query results
--- ================================================================
-
-SET 'execution.runtime-mode' = 'batch';
 
 USE CATALOG paimon;
 
 -- ================================================================
 -- Report 1: KPI Dashboard
 -- ================================================================
-SELECT '===== KPI Dashboard =====' AS report;
-
 SELECT
-    dt              AS date,
+    dt              AS dt,
     total_orders    AS orders,
     total_amount    AS amount,
     avg_amount      AS avg_price,
@@ -28,10 +22,8 @@ ORDER BY dt;
 -- ================================================================
 -- Report 2: Customer Level Ranking
 -- ================================================================
-SELECT '===== Customer Level Ranking =====' AS report;
-
 SELECT
-    dt              AS date,
+    dt              AS dt,
     customer_level,
     order_count     AS orders,
     total_amount    AS amount,
@@ -43,10 +35,8 @@ ORDER BY dt, amount_rank;
 -- ================================================================
 -- Report 3: Channel Analysis
 -- ================================================================
-SELECT '===== Channel Analysis =====' AS report;
-
 SELECT
-    dt              AS date,
+    dt              AS dt,
     channel,
     order_count     AS orders,
     total_amount    AS amount,
@@ -58,10 +48,8 @@ ORDER BY dt, channel;
 -- ================================================================
 -- Report 4: Daily Trend
 -- ================================================================
-SELECT '===== Daily Trend =====' AS report;
-
 SELECT
-    dt          AS date,
+    dt          AS dt,
     order_count AS orders,
     total_amount AS amount,
     avg_amount  AS avg_price
@@ -71,8 +59,6 @@ ORDER BY dt;
 -- ================================================================
 -- Report 5: Dirty Data Traceability (Pit 3)
 -- ================================================================
-SELECT '===== Dirty Data Traceability (Pit 3) =====' AS report;
-
 SELECT
     reject_reason,
     COUNT(*)     AS dirty_count,
@@ -85,16 +71,14 @@ ORDER BY dirty_count DESC;
 -- ================================================================
 -- Report 6: Full-chain Reconciliation (ODS -> DWD -> DWS -> ADS)
 -- ================================================================
-SELECT '===== Full-chain Reconciliation =====' AS report;
-
-SELECT 'ODS' AS layer, 'paimon_db.orders' AS table_name, CAST(SUM(amount) AS DECIMAL(18,2)) AS total_amount
+SELECT 'ODS' AS layer, CAST(SUM(amount) AS DECIMAL(18,2)) AS total_amount
 FROM paimon_db.orders
 UNION ALL
-SELECT 'DWD', 'dwd.dwd_order_detail', CAST(SUM(amount) AS DECIMAL(18,2))
+SELECT 'DWD', CAST(SUM(amount) AS DECIMAL(18,2))
 FROM dwd.dwd_order_detail
 UNION ALL
-SELECT 'DWS', 'dws.dws_order_daily', CAST(SUM(total_amount) AS DECIMAL(18,2))
+SELECT 'DWS', CAST(SUM(total_amount) AS DECIMAL(18,2))
 FROM dws.dws_order_daily
 UNION ALL
-SELECT 'ADS', 'ads.ads_order_kpi', CAST(SUM(total_amount) AS DECIMAL(18,2))
+SELECT 'ADS', CAST(SUM(total_amount) AS DECIMAL(18,2))
 FROM ads.ads_order_kpi;
