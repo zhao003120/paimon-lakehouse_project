@@ -2,11 +2,12 @@
 # JobManager RPC address - TaskManager uses this to connect to JobManager
 jobmanager.rpc.address: jobmanager
 jobmanager.rpc.port: 6123
-jobmanager.memory.process.size: 1600m
+jobmanager.memory.process.size: 2048m
 
 # TaskManager
-taskmanager.memory.process.size: 2048m
+taskmanager.memory.process.size: 4096m
 taskmanager.numberOfTaskSlots: 4
+taskmanager.memory.jvm-metaspace.size: 512m
 
 # Parallelism (low for demo - single TaskManager with 4 slots)
 parallelism.default: 1
