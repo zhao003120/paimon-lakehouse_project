@@ -5,6 +5,7 @@
 -- ================================================================
 
 USE CATALOG paimon;
+SET 'table.exec.adaptive-parallelism.enabled' = 'false';
 
 -- Full refresh: truncate and reload (batch mode)
 -- For streaming, use INSERT INTO without overwrite

@@ -3,6 +3,7 @@
 -- ================================================================
 
 USE CATALOG paimon;
+SET 'table.exec.adaptive-parallelism.enabled' = 'false';
 
 -- Daily aggregation
 INSERT INTO dws.dws_order_daily

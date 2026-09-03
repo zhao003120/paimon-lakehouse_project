@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS dws.dws_order_daily (
 ) WITH (
     'connector' = 'paimon',
     'bucket' = '4',
-    'file.format' = 'parquet'
+    'file.format' = 'parquet',
+    'sink.parallelism' = '2'
 );
 
 -- DWS: weekly aggregation
@@ -30,5 +31,6 @@ CREATE TABLE IF NOT EXISTS dws.dws_order_weekly (
 ) WITH (
     'connector' = 'paimon',
     'bucket' = '2',
-    'file.format' = 'parquet'
+    'file.format' = 'parquet',
+    'sink.parallelism' = '2'
 );

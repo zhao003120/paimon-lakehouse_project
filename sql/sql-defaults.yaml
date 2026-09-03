@@ -11,6 +11,7 @@ execution:
 
 configuration:
   table.exec.source.idle-timeout: 30s
+  table.exec.adaptive-parallelism.enabled: false
 
 # ================================================================
 # Auto-create Paimon Catalog on every session start
