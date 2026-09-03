@@ -38,7 +38,7 @@ SELECT
     COUNT(*)                                           AS order_count,
     CAST(SUM(amount) AS DECIMAL(18,2))                 AS total_amount,
     CAST(AVG(amount) AS DECIMAL(18,2))                 AS avg_amount,
-    ROW_NUMBER() OVER (PARTITION BY dt ORDER BY SUM(amount) DESC) AS amount_rank
+    CAST(ROW_NUMBER() OVER (PARTITION BY dt ORDER BY SUM(amount) DESC) AS INT) AS amount_rank
 FROM dwd.dwd_order_detail
 WHERE is_valid = TRUE
 GROUP BY dt, customer_level;
