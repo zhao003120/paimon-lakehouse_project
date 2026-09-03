@@ -1,8 +1,10 @@
 -- ================================================================
 -- 09-report.sql: Report queries (BI dashboard)
 -- ================================================================
--- Run with: SET 'sql-client.execution.result-mode' = 'tableau';
+-- Must use batch mode for finite query results
 -- ================================================================
+
+SET 'execution.runtime-mode' = 'batch';
 
 USE CATALOG paimon;
 

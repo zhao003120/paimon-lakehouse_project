@@ -5,15 +5,12 @@
 # Catalog is auto-created on every session start
 
 execution:
-  planner: streaming
+  planner: batch
   result-mode: tableau
   parallelism: 4
 
 configuration:
   table.exec.source.idle-timeout: 30s
-  table.exec.mini-batch.enabled: true
-  table.exec.mini-batch.allow-latency: 5s
-  table.exec.mini-batch.size: 100
 
 # ================================================================
 # Auto-create Paimon Catalog on every session start
