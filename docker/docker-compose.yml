@@ -92,10 +92,10 @@ services:
       - "9030:9030"
     environment:
       - MYSQL_PORT=9030
-      - FE_HOST=starrocks-fe
     volumes:
       - starrocks-fe-meta:/opt/starrocks/fe/meta
-      - ./starrocks-config/fe.conf:/opt/starrocks/fe/conf/fe.conf
+      - ./starrocks-config/fe-start.sh:/opt/starrocks/fe/fe-start.sh
+    entrypoint: ["bash", "/opt/starrocks/fe/fe-start.sh"]
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9030' 2>/dev/null || exit 1"]
       interval: 10s
@@ -123,7 +123,8 @@ services:
       - BE_PORT=9050
     volumes:
       - starrocks-be-storage:/opt/starrocks/be/storage
-      - ./starrocks-config/be.conf:/opt/starrocks/be/conf/be.conf
+      - ./starrocks-config/be-start.sh:/opt/starrocks/be/be-start.sh
+    entrypoint: ["bash", "/opt/starrocks/be/be-start.sh"]
 
 volumes:
   minio-data:
