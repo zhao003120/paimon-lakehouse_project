@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # ================================================================
   # MinIO: S3-compatible object storage for Paimon
@@ -84,25 +82,30 @@ services:
   starrocks-fe:
     image: starrocks/fe-ubuntu:3.3.2
     container_name: paimon-starrocks-fe
+    hostname: starrocks-fe
     depends_on:
       minio-init:
         condition: service_completed_successfully
     ports:
-      - "8030:8030"   # FE HTTP (Web UI)
-      - "9020:9020"   # FE thrift (BE connects here)
-      - "9030:9030"   # FE MySQL (SQL client connects here)
+      - "8030:8030"
+      - "9020:9020"
+      - "9030:9030"
     environment:
       - MYSQL_PORT=9030
     volumes:
       - starrocks-fe-meta:/opt/starrocks/fe/meta
-      - ../sql/starrocks:/app/sql/starrocks
     command: >
-      bash /opt/starrocks/fe/bin/start_fe.sh --host_type FQDN
+      bash -c "
+      echo 'priority_networks=10.0.0.0/8\|172.16.0.0/12\|192.168.0.0/16\|127.0.0.1/32' >> /opt/starrocks/fe/conf/fe.conf &&
+      /opt/starrocks/fe/bin/start_fe.sh --host_type FQDN --daemon &&
+      tail -f /dev/null
+      "
     healthcheck:
       test: ["CMD", "bash", "-c", "curl -sf http://localhost:8030/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
 
   # ================================================================
   # StarRocks BE (Backend): MPP execution + Data Cache + vectorized engine
@@ -110,13 +113,14 @@ services:
   starrocks-be:
     image: starrocks/be-ubuntu:3.3.2
     container_name: paimon-starrocks-be
+    hostname: starrocks-be
     depends_on:
       starrocks-fe:
         condition: service_healthy
     ports:
-      - "8040:8040"   # BE HTTP
-      - "9050:9050"   # BE thrift
-      - "9060:9060"   # BE webserver
+      - "8040:8040"
+      - "9050:9050"
+      - "9060:9060"
     environment:
       - FE_HOST=starrocks-fe
       - FE_PORT=9020
@@ -125,8 +129,9 @@ services:
       - starrocks-be-storage:/opt/starrocks/be/storage
     command: >
       bash -c "
-      sleep 10 &&
-      /opt/starrocks/be/bin/start_be.sh --host_type FQDN
+      echo 'priority_networks=10.0.0.0/8\|172.16.0.0/12\|192.168.0.0/16\|127.0.0.1/32' >> /opt/starrocks/be/conf/be.conf &&
+      /opt/starrocks/be/bin/start_be.sh --host_type FQDN --daemon &&
+      tail -f /dev/null
       "
 
 volumes:
