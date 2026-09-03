@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS paimon_db.orders (
     'full-compaction.delta-commits' = '10',
     'partition' = 'dt',
     'file.format' = 'parquet',
-    'sink.parallelism' = '2'
+    'sink.parallelism' = '1'
 );
 
 -- ================================================================
@@ -47,5 +47,5 @@ CREATE TABLE IF NOT EXISTS paimon_db.dirty_orders (
     'bucket' = '4',
     'partition' = 'dt',
     'file.format' = 'parquet',
-    'sink.parallelism' = '2'
+    'sink.parallelism' = '1'
 );

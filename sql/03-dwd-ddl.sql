@@ -22,5 +22,5 @@ CREATE TABLE IF NOT EXISTS dwd.dwd_order_detail (
     'bucket' = '8',
     'partition' = 'dt',
     'file.format' = 'parquet',
-    'sink.parallelism' = '2'
+    'sink.parallelism' = '1'
 );

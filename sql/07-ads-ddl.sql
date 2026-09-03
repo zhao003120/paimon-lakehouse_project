@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS ads.ads_order_kpi (
     'connector' = 'paimon',
     'bucket' = '2',
     'file.format' = 'parquet',
-    'sink.parallelism' = '2'
+    'sink.parallelism' = '1'
 );
 
 -- ADS: customer level ranking
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS ads.ads_customer_rank (
     'connector' = 'paimon',
     'bucket' = '4',
     'file.format' = 'parquet',
-    'sink.parallelism' = '2'
+    'sink.parallelism' = '1'
 );
 
 -- ADS: channel statistics
@@ -51,5 +51,5 @@ CREATE TABLE IF NOT EXISTS ads.ads_channel_stat (
     'connector' = 'paimon',
     'bucket' = '4',
     'file.format' = 'parquet',
-    'sink.parallelism' = '2'
+    'sink.parallelism' = '1'
 );

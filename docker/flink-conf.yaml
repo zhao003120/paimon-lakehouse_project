@@ -8,8 +8,8 @@ jobmanager.memory.process.size: 1600m
 taskmanager.memory.process.size: 2048m
 taskmanager.numberOfTaskSlots: 4
 
-# Parallelism
-parallelism.default: 2
+# Parallelism (low for demo - single TaskManager with 4 slots)
+parallelism.default: 1
 
 # BATCH mode (global default - ensures all jobs run in batch, not streaming)
 # This is the most reliable way to set batch mode in Flink 1.18

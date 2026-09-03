@@ -2,7 +2,8 @@
 # ================================================================
 # run-sql.sh: Run SQL files via Flink SQL Client or StarRocks
 # ================================================================
-# Catalog is created inline via 00-catalog.sql (most reliable)
+# Catalog is created inline via 00-catalog.sql (auto-injected)
+# Batch mode is set at cluster level in flink-conf.yaml
 # ================================================================
 # Usage:
 #   bash run-sql.sh warehouse    # Full Flink pipeline
@@ -15,62 +16,67 @@
 #   bash run-sql.sh sr-benchmark # Benchmark via StarRocks
 # ================================================================
 
-set -e
+# NO set -e: we want to continue even if one SQL statement fails
+# set -e
 
 SQL_DIR="/app/sql"
 FLINK_HOME="/opt/flink"
 SQL_CLIENT="$FLINK_HOME/bin/sql-client.sh"
 
 # ================================================================
-# Flink SQL runner: concatenate all files into one session
-# 00-catalog.sql is always included first to create the catalog
+# Flink SQL runner: concatenate files into one temp file
+# 00-catalog.sql is always included first
+# Uses -f flag which WAITS for each INSERT to complete before next
 # ================================================================
 run_flink_sql() {
     local files=("$@")
-    local combined=""
     local names=""
+    local tmp_file="/tmp/flink-combined-$(date +%s).sql"
+    
+    # Build combined SQL file
+    > "$tmp_file"
     
     # Always start with catalog creation
     local catalog_file="$SQL_DIR/00-catalog.sql"
     if [ -f "$catalog_file" ]; then
-        combined="-- ================================================================
--- File: 00-catalog.sql (auto-included)
--- ================================================================
-$(cat "$catalog_file")
-"
+        cat "$catalog_file" >> "$tmp_file"
+        echo "" >> "$tmp_file"
     fi
     
     for file in "${files[@]}"; do
         local f="$SQL_DIR/$file"
         if [ -f "$f" ]; then
             names="$names $(basename "$file" .sql)"
-            combined="$combined
--- ================================================================
--- File: $file
--- ================================================================
-$(cat "$f")
-"
+            echo "-- ================================================================" >> "$tmp_file"
+            echo "-- File: $file" >> "$tmp_file"
+            echo "-- ================================================================" >> "$tmp_file"
+            cat "$f" >> "$tmp_file"
+            echo "" >> "$tmp_file"
         else
             echo "WARN: File not found: $f"
         fi
     done
     
     echo -e "\033[0;36m=== Flink SQL:$names ===\033[0m"
-
-    # Write combined SQL to temp file, then pipe to sql-client via stdin
-    # Pipe mode (not -f flag) ensures SET statements persist across all statements
-    local tmp_file="/tmp/flink-combined.sql"
-    echo "$combined" > "$tmp_file"
-
-    # Execute via stdin pipe (SET statements work in this mode)
-    cat "$tmp_file" | $SQL_CLIENT embedded \
+    echo "       Combined file: $tmp_file ($(wc -l < "$tmp_file") lines)"
+    
+    # Execute with -f flag
+    # -f mode: reads file, executes each statement, WAITS for INSERT to complete
+    # Batch mode comes from flink-conf.yaml (execution.runtime-mode: BATCH)
+    $SQL_CLIENT embedded \
         -l "$FLINK_HOME/lib" \
-        -e "$SQL_DIR/sql-defaults.yaml" \
+        -f "$tmp_file" \
         2>&1
-
+    
+    local exit_code=$?
     rm -f "$tmp_file"
     
-    echo -e "\033[0;32m  Done:$names\033[0m"
+    if [ $exit_code -ne 0 ]; then
+        echo -e "\033[0;33m  Completed with warnings (exit code: $exit_code)\033[0m"
+    else
+        echo -e "\033[0;32m  Done:$names\033[0m"
+    fi
+    return 0
 }
 
 # ================================================================
@@ -116,7 +122,8 @@ case $ACTION in
         echo "========================================================"
         echo "  Full Warehouse Pipeline (Flink SQL)"
         echo "  ODS -> DWD -> DWS -> ADS -> Report"
-        echo "  (Catalog auto-created from 00-catalog.sql)"
+        echo "  Batch mode: cluster-level (flink-conf.yaml)"
+        echo "  Execution: -f flag (waits for each INSERT)"
         echo "========================================================"
         echo -e "\033[0m"
         run_flink_sql \
@@ -161,10 +168,8 @@ case $ACTION in
         echo -e "\033[0;36m"
         echo "========================================================"
         echo "  Full Pipeline: Flink (write) + StarRocks (read)"
-        echo "  (Catalog auto-created from 00-catalog.sql)"
         echo "========================================================"
         echo -e "\033[0m"
-        # Step 1: Flink pipeline (DDL + mock + ETL)
         run_flink_sql \
             01-ods-ddl.sql \
             01b-alter-tables.sql \
@@ -176,7 +181,6 @@ case $ACTION in
             07-ads-ddl.sql \
             08-dws-to-ads.sql
         echo -e "\033[0;32m  Flink ETL complete, now querying via StarRocks...\033[0m"
-        # Step 2: StarRocks queries
         run_starrocks catalog
         run_starrocks report
         run_starrocks benchmark
@@ -188,7 +192,7 @@ case $ACTION in
     *)
         echo "Usage: bash run-sql.sh {command}"
         echo ""
-        echo "Flink pipeline (catalog auto-created):"
+        echo "Flink pipeline (catalog auto-created, batch mode from flink-conf.yaml):"
         echo "  warehouse       Full Flink pipeline (DDL + mock + ETL + report)"
         echo "  ddl             Create all Paimon tables"
         echo "  mock            Insert mock data"

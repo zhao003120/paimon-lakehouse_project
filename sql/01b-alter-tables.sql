@@ -8,17 +8,17 @@
 USE CATALOG paimon;
 
 -- ODS
-ALTER TABLE paimon_db.orders SET ('sink.parallelism' = '2');
-ALTER TABLE paimon_db.dirty_orders SET ('sink.parallelism' = '2');
+ALTER TABLE paimon_db.orders SET ('sink.parallelism' = '1');
+ALTER TABLE paimon_db.dirty_orders SET ('sink.parallelism' = '1');
 
 -- DWD
-ALTER TABLE dwd.dwd_order_detail SET ('sink.parallelism' = '2');
+ALTER TABLE dwd.dwd_order_detail SET ('sink.parallelism' = '1');
 
 -- DWS
-ALTER TABLE dws.dws_order_daily SET ('sink.parallelism' = '2');
-ALTER TABLE dws.dws_order_weekly SET ('sink.parallelism' = '2');
+ALTER TABLE dws.dws_order_daily SET ('sink.parallelism' = '1');
+ALTER TABLE dws.dws_order_weekly SET ('sink.parallelism' = '1');
 
 -- ADS
-ALTER TABLE ads.ads_order_kpi SET ('sink.parallelism' = '2');
-ALTER TABLE ads.ads_customer_rank SET ('sink.parallelism' = '2');
-ALTER TABLE ads.ads_channel_stat SET ('sink.parallelism' = '2');
+ALTER TABLE ads.ads_order_kpi SET ('sink.parallelism' = '1');
+ALTER TABLE ads.ads_customer_rank SET ('sink.parallelism' = '1');
+ALTER TABLE ads.ads_channel_stat SET ('sink.parallelism' = '1');
