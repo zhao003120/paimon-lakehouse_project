@@ -2,8 +2,7 @@
 # ================================================================
 # run-sql.sh: Run SQL files via Flink SQL Client or StarRocks
 # ================================================================
-# Catalog is auto-created via sql-defaults.yaml (catalogs section)
-# No need to include 00-catalog.sql in every command
+# Catalog is created inline via 00-catalog.sql (most reliable)
 # ================================================================
 # Usage:
 #   bash run-sql.sh warehouse    # Full Flink pipeline
@@ -24,12 +23,22 @@ SQL_CLIENT="$FLINK_HOME/bin/sql-client.sh"
 
 # ================================================================
 # Flink SQL runner: concatenate all files into one session
-# Catalog auto-loaded from sql-defaults.yaml
+# 00-catalog.sql is always included first to create the catalog
 # ================================================================
 run_flink_sql() {
     local files=("$@")
     local combined=""
     local names=""
+    
+    # Always start with catalog creation
+    local catalog_file="$SQL_DIR/00-catalog.sql"
+    if [ -f "$catalog_file" ]; then
+        combined="-- ================================================================
+-- File: 00-catalog.sql (auto-included)
+-- ================================================================
+$(cat "$catalog_file")
+"
+    fi
     
     for file in "${files[@]}"; do
         local f="$SQL_DIR/$file"
@@ -49,10 +58,8 @@ $(cat "$f")
     echo -e "\033[0;36m=== Flink SQL:$names ===\033[0m"
     
     # Run all SQL in a single session via stdin
-    # Catalog 'paimon' is auto-created from sql-defaults.yaml
     echo "$combined" | $SQL_CLIENT embedded \
         -l "$FLINK_HOME/lib" \
-        -e "$SQL_DIR/sql-defaults.yaml" \
         2>&1 | head -200
     
     echo -e "\033[0;32m  Done:$names\033[0m"
@@ -71,10 +78,10 @@ run_starrocks() {
 ACTION=${1:-help}
 
 case $ACTION in
-    # --- Flink pipeline (no 00-catalog.sql needed, auto-loaded) ---
+    # --- Flink pipeline (catalog auto-included) ---
     ddl)
         echo -e "\033[0;36m=== Create All Tables ===\033[0m"
-        run_flink_sql 01-ods-ddl.sql 03-dwd-ddl.sql 05-dws-ddl.sql 07-ads-ddl.sql
+        run_flink_sql 01-ods-ddl.sql 01b-alter-tables.sql 03-dwd-ddl.sql 05-dws-ddl.sql 07-ads-ddl.sql
         ;;
     mock)
         echo -e "\033[0;36m=== Insert Mock Data ===\033[0m"
@@ -101,7 +108,7 @@ case $ACTION in
         echo "========================================================"
         echo "  Full Warehouse Pipeline (Flink SQL)"
         echo "  ODS -> DWD -> DWS -> ADS -> Report"
-        echo "  (Catalog auto-loaded from sql-defaults.yaml)"
+        echo "  (Catalog auto-created from 00-catalog.sql)"
         echo "========================================================"
         echo -e "\033[0m"
         run_flink_sql \
@@ -146,12 +153,13 @@ case $ACTION in
         echo -e "\033[0;36m"
         echo "========================================================"
         echo "  Full Pipeline: Flink (write) + StarRocks (read)"
-        echo "  (Catalog auto-loaded from sql-defaults.yaml)"
+        echo "  (Catalog auto-created from 00-catalog.sql)"
         echo "========================================================"
         echo -e "\033[0m"
         # Step 1: Flink pipeline (DDL + mock + ETL)
         run_flink_sql \
             01-ods-ddl.sql \
+            01b-alter-tables.sql \
             02-mock-data.sql \
             03-dwd-ddl.sql \
             04-ods-to-dwd.sql \
@@ -172,7 +180,7 @@ case $ACTION in
     *)
         echo "Usage: bash run-sql.sh {command}"
         echo ""
-        echo "Flink pipeline (catalog auto-loaded):"
+        echo "Flink pipeline (catalog auto-created):"
         echo "  warehouse       Full Flink pipeline (DDL + mock + ETL + report)"
         echo "  ddl             Create all Paimon tables"
         echo "  mock            Insert mock data"
