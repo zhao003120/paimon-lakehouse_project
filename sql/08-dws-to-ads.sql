@@ -8,7 +8,7 @@ SET 'table.exec.adaptive-parallelism.enabled' = 'false';
 -- ================================================================
 -- ADS: KPI dashboard
 -- ================================================================
-INSERT INTO ads.ads_order_kpi
+INSERT OVERWRITE ads.ads_order_kpi
 SELECT
     d.dt,
     d.order_count                                          AS total_orders,
@@ -31,7 +31,7 @@ GROUP BY
 -- ================================================================
 -- ADS: Customer level ranking
 -- ================================================================
-INSERT INTO ads.ads_customer_rank
+INSERT OVERWRITE ads.ads_customer_rank
 SELECT
     dt,
     customer_level,
@@ -46,7 +46,7 @@ GROUP BY dt, customer_level;
 -- ================================================================
 -- ADS: Channel statistics
 -- ================================================================
-INSERT INTO ads.ads_channel_stat
+INSERT OVERWRITE ads.ads_channel_stat
 SELECT
     dt,
     channel,

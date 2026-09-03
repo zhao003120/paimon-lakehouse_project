@@ -7,9 +7,8 @@
 USE CATALOG paimon;
 SET 'table.exec.adaptive-parallelism.enabled' = 'false';
 
--- Full refresh: truncate and reload (batch mode)
--- For streaming, use INSERT INTO without overwrite
-INSERT INTO dwd.dwd_order_detail
+-- Full refresh: overwrite mode (idempotent, safe to re-run)
+INSERT OVERWRITE dwd.dwd_order_detail
 SELECT
     order_id,
     amount,

@@ -106,6 +106,7 @@ case $ACTION in
         echo -e "\033[0m"
         run_flink_sql \
             01-ods-ddl.sql \
+            01b-alter-tables.sql \
             02-mock-data.sql \
             03-dwd-ddl.sql \
             04-ods-to-dwd.sql \

@@ -5,8 +5,8 @@
 USE CATALOG paimon;
 SET 'table.exec.adaptive-parallelism.enabled' = 'false';
 
--- Daily aggregation
-INSERT INTO dws.dws_order_daily
+-- Daily aggregation (overwrite: safe to re-run)
+INSERT OVERWRITE dws.dws_order_daily
 SELECT
     dt,
     COUNT(*)           AS order_count,
@@ -18,8 +18,8 @@ FROM dwd.dwd_order_detail
 WHERE is_valid = TRUE
 GROUP BY dt;
 
--- Weekly aggregation (2026-09-01 ~ 2026-09-07)
-INSERT INTO dws.dws_order_weekly
+-- Weekly aggregation (overwrite: safe to re-run)
+INSERT OVERWRITE dws.dws_order_weekly
 SELECT
     '2026-09-01'       AS week_start,
     '2026-09-07'       AS week_end,
