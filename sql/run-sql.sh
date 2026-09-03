@@ -58,10 +58,11 @@ $(cat "$f")
     echo -e "\033[0;36m=== Flink SQL:$names ===\033[0m"
     
     # Run all SQL in a single session via stdin
+    # No head/tail truncation - let all statements complete
     echo "$combined" | $SQL_CLIENT embedded \
         -l "$FLINK_HOME/lib" \
         -e "$SQL_DIR/sql-defaults.yaml" \
-        2>&1 | head -200
+        2>&1
     
     echo -e "\033[0;32m  Done:$names\033[0m"
 }
