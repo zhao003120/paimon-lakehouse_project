@@ -2,6 +2,7 @@
 # sql-defaults.yaml: Flink SQL Client defaults
 # ================================================================
 # Used by run-sql.sh when executing SQL files
+# Catalog is auto-created on every session start
 
 execution:
   planner: streaming
@@ -14,4 +15,15 @@ configuration:
   table.exec.mini-batch.allow-latency: 5s
   table.exec.mini-batch.size: 100
 
-# Paimon catalog will be created in 00-catalog.sql
+# ================================================================
+# Auto-create Paimon Catalog on every session start
+# This means you DON'T need to run 00-catalog.sql manually
+# ================================================================
+catalogs:
+  - name: paimon
+    type: paimon
+    warehouse: "s3://paimon/warehouse"
+    s3.endpoint: "http://minio:9000"
+    s3.access-key: "admin"
+    s3.secret-key: "admin123"
+    s3.path.style.access: "true"

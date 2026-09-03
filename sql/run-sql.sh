@@ -2,6 +2,9 @@
 # ================================================================
 # run-sql.sh: Run SQL files via Flink SQL Client or StarRocks
 # ================================================================
+# Catalog is auto-created via sql-defaults.yaml (catalogs section)
+# No need to include 00-catalog.sql in every command
+# ================================================================
 # Usage:
 #   bash run-sql.sh warehouse    # Full Flink pipeline
 #   bash run-sql.sh ddl          # Create all Paimon tables
@@ -21,6 +24,7 @@ SQL_CLIENT="$FLINK_HOME/bin/sql-client.sh"
 
 # ================================================================
 # Flink SQL runner: concatenate all files into one session
+# Catalog auto-loaded from sql-defaults.yaml
 # ================================================================
 run_flink_sql() {
     local files=("$@")
@@ -45,6 +49,7 @@ $(cat "$f")
     echo -e "\033[0;36m=== Flink SQL:$names ===\033[0m"
     
     # Run all SQL in a single session via stdin
+    # Catalog 'paimon' is auto-created from sql-defaults.yaml
     echo "$combined" | $SQL_CLIENT embedded \
         -l "$FLINK_HOME/lib" \
         -e "$SQL_DIR/sql-defaults.yaml" \
@@ -66,40 +71,40 @@ run_starrocks() {
 ACTION=${1:-help}
 
 case $ACTION in
-    # --- Flink pipeline ---
+    # --- Flink pipeline (no 00-catalog.sql needed, auto-loaded) ---
     ddl)
         echo -e "\033[0;36m=== Create All Tables ===\033[0m"
-        run_flink_sql 00-catalog.sql 01-ods-ddl.sql 03-dwd-ddl.sql 05-dws-ddl.sql 07-ads-ddl.sql
+        run_flink_sql 01-ods-ddl.sql 03-dwd-ddl.sql 05-dws-ddl.sql 07-ads-ddl.sql
         ;;
     mock)
         echo -e "\033[0;36m=== Insert Mock Data ===\033[0m"
-        run_flink_sql 00-catalog.sql 02-mock-data.sql
+        run_flink_sql 02-mock-data.sql
         ;;
     etl)
         echo -e "\033[0;36m=== Run ETL Pipeline ===\033[0m"
-        run_flink_sql 00-catalog.sql 04-ods-to-dwd.sql 06-dwd-to-dws.sql 08-dws-to-ads.sql
+        run_flink_sql 04-ods-to-dwd.sql 06-dwd-to-dws.sql 08-dws-to-ads.sql
         ;;
     report)
         echo -e "\033[0;36m=== Query Reports (Flink) ===\033[0m"
-        run_flink_sql 00-catalog.sql 09-report.sql
+        run_flink_sql 09-report.sql
         ;;
     schema-demo)
         echo -e "\033[0;36m=== Schema Evolution Demo ===\033[0m"
-        run_flink_sql 00-catalog.sql 10-schema-evolution.sql
+        run_flink_sql 10-schema-evolution.sql
         ;;
     checkpoint-demo)
         echo -e "\033[0;36m=== Checkpoint Recovery Demo ===\033[0m"
-        run_flink_sql 00-catalog.sql 11-checkpoint-demo.sql
+        run_flink_sql 11-checkpoint-demo.sql
         ;;
     warehouse)
         echo -e "\033[0;36m"
         echo "========================================================"
         echo "  Full Warehouse Pipeline (Flink SQL)"
         echo "  ODS -> DWD -> DWS -> ADS -> Report"
+        echo "  (Catalog auto-loaded from sql-defaults.yaml)"
         echo "========================================================"
         echo -e "\033[0m"
         run_flink_sql \
-            00-catalog.sql \
             01-ods-ddl.sql \
             02-mock-data.sql \
             03-dwd-ddl.sql \
@@ -140,11 +145,11 @@ case $ACTION in
         echo -e "\033[0;36m"
         echo "========================================================"
         echo "  Full Pipeline: Flink (write) + StarRocks (read)"
+        echo "  (Catalog auto-loaded from sql-defaults.yaml)"
         echo "========================================================"
         echo -e "\033[0m"
         # Step 1: Flink pipeline (DDL + mock + ETL)
         run_flink_sql \
-            00-catalog.sql \
             01-ods-ddl.sql \
             02-mock-data.sql \
             03-dwd-ddl.sql \
@@ -166,7 +171,7 @@ case $ACTION in
     *)
         echo "Usage: bash run-sql.sh {command}"
         echo ""
-        echo "Flink pipeline:"
+        echo "Flink pipeline (catalog auto-loaded):"
         echo "  warehouse       Full Flink pipeline (DDL + mock + ETL + report)"
         echo "  ddl             Create all Paimon tables"
         echo "  mock            Insert mock data"
